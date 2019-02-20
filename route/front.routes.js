@@ -9,11 +9,19 @@ Imports
 Définition
 */
     //=> Homepage
-    frontRouter.get('/', ( req, res ) => {
+    frontRouter.get('/old', ( req, res ) => {
         //=> Créeer une collection de todoes
 
         //=> Envoyer le fichier "index" dans la réponse
         return res.render('part10');
+
+        
+    });
+    frontRouter.get('/', ( req, res ) => {
+        //=> Créeer une collection de todoes
+
+        //=> Envoyer le fichier "index" dans la réponse
+        return res.render('main');
 
         
     });

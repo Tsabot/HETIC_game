@@ -1,0 +1,190 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>SUperNodeGame</title>
+    <script src="js/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+
+var player;
+var bombs;
+var platforms;
+var cursors;
+var score = 0;
+var gameOver = false;
+//Movement of player
+var firstJump = false;
+var secondJump = false;
+var secondJumpTimer;
+//Resizing
+var curentWidth = 1920;
+var curentHeight = 1080;
+
+window.onload = initiate();
+
+function initiate(){
+    var player = null;
+    var bombs = null;
+    var platforms = null;
+    var cursors = null;
+    var config = {
+        type: Phaser.AUTO,
+        width: curentWidth,
+        height: curentHeight,
+        transparent: true,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 400 },
+                debug: false
+            }
+        },
+        scene: {
+            preload: preload,
+            create: create,
+            update: update
+        }
+    };
+    var game = new Phaser.Game(config);
+    
+}
+
+function preload ()
+{
+    this.load.image('background1_1', './assets/background1_1.png');
+    this.load.image('platform', './assets/plateform.png');
+    this.load.image('bomb', './assets/bomb.png');
+    this.load.spritesheet('hero', './assets/hero.png', { frameWidth: 128, frameHeight: 192 });
+    this.load.spritesheet('monster', './assets/hero.png', { frameWidth: 128, frameHeight: 192 });
+}
+
+function create ()
+{
+    //  A simple background for our game
+    this.add.image(curentWidth/2, curentHeight/2, 'background1_1');
+    this.cameras.main.setSize(curentWidth, curentHeight);
+
+    mainCam= this.cameras.main;
+    //  The platforms group contains the ground and the 2 ledges we can jump on
+    platforms = this.physics.add.staticGroup();
+
+    //  Here we create the ground.
+    //  Scale it to fit the width of the game (the original sprite is 400x32 in size)
+    platforms.create(curentWidth/2, curentHeight - 160, 'platform').refreshBody();
+    platforms.create(curentWidth/2, curentHeight - 400, 'platform').setScale(0.5).refreshBody();
+    //  Now let's create some ledges
+
+    // The player and its settings
+    player = this.physics.add.sprite(30, 690, 'hero');
+    
+    //  Player physics properties. Give the little guy a slight bounce.
+    player.setCollideWorldBounds(true);
+
+    //  Our player animations, turning, walking left and walking right.
+    this.anims.create({
+        key: 'left',
+        frames: [ { key: 'hero', frame: 0 } ],
+        frameRate: 10
+    });
+
+    this.anims.create({
+        key: 'turn',
+        frames: [ { key: 'hero', frame: 0 } ],
+        frameRate: 20
+    });
+
+    this.anims.create({
+        key: 'right',
+        frames: [ { key: 'hero', frame: 0 } ],
+        frameRate: 10
+    });
+
+    //Creation of monsters
+
+    monster1 = this.physics.add.sprite(1000, curentHeight - 600, 'monster');
+    monster1.setCollideWorldBounds(true);
+
+    //  Input Events
+    cursors = this.input.keyboard.createCursorKeys();
+
+    
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(monster1, platforms);
+
+
+    this.physics.add.collider(player, monster1, hitPlayer, null, this);
+
+
+}
+
+function update ()
+{
+    mainCam.centerOn(player.x, player.y)
+    if (gameOver)
+    {
+        return;
+    }
+    if(player.body.touching.down && firstJump == true){
+        secondJump = false;
+        firstJump = false;
+    }
+    if (cursors.left.isDown)
+    {
+        player.setVelocityX(-360);
+        
+        player.anims.play('left', true);
+    }
+    else if (cursors.right.isDown)
+    {
+        player.setVelocityX(360);
+        player.anims.play('right', true);
+    }
+    else
+    {
+        player.setVelocityX(0);
+
+        player.anims.play('turn');
+    }
+
+    if (cursors.up.isDown && firstJump == false)
+    {
+        firstJump = true;
+        player.setVelocityY(-300);
+        secondJumpTimer = setTimeout(() => {
+            secondJump = true;
+        }, 200);
+    }
+    if (cursors.up.isDown && firstJump == true){
+        
+        if(secondJump == true){
+            player.setVelocityY(-350);
+            secondJump = false;
+        }
+    }
+}
+
+
+function hitPlayer (player, bomb)
+{
+    this.physics.pause();
+
+    player.setTint(0xff0000);
+
+    player.anims.play('turn');
+
+    gameOver = true;
+}
+
+</script>
+
+</body>
+</html>
