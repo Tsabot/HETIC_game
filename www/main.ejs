@@ -15,18 +15,27 @@
 
 <script type="text/javascript">
 
-
+ /*TO DO
+ Ajouter déplacement monstre
+ Ajouter système de vie du héro
+ Ajouter animation déplacement hero
+ */
 var player;
-var bombs;
 var platforms;
 var cursors;
 var score = 0;
 var gameOver = false;
+
+//Group of sprite
+var chestGroup = [];
+var monsterGroup = [];
+
 //Movement of player
 var firstJump = false;
 var secondJump = false;
 var secondJumpTimer;
-//Resizing
+
+//Taille de la map
 var curentWidth = 3840;
 var curentHeight = 1000;
 
@@ -37,6 +46,7 @@ function initiate(){
     var bombs = null;
     var platforms = null;
     var cursors = null;
+    
     var config = {
         type: Phaser.AUTO,
         width: curentWidth,
@@ -63,7 +73,7 @@ function preload ()
 {
     this.load.image('background1_1', './assets/background1_1.png');
     this.load.image('platform', './assets/plateform.png');
-    this.load.spritesheet('chest', './assets/chest.png',{ frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('chest', './assets/chest.png', { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('hero', './assets/hero.png', { frameWidth: 128, frameHeight: 192 });
     this.load.spritesheet('monster', './assets/hero.png', { frameWidth: 128, frameHeight: 192 });
 }
@@ -83,13 +93,12 @@ function create ()
     platforms.create(curentWidth/1.5, curentHeight-50, 'platform').refreshBody();
 
     //  Creation of Chest
-
-    chest = this.physics.add.sprite(curentWidth/2, curentHeight-270, 'chest');
-    chest.setCollideWorldBounds(true);
+    chest1 = this.physics.add.sprite(900, curentHeight - 270, 'chest').setScale(0.5);
+    chest2 = this.physics.add.sprite(3000, curentHeight - 270, 'chest').setScale(0.5);
+    chestGroup.push(chest1, chest2);
 
     // The player and its settings
     player = this.physics.add.sprite(30, 690, 'hero');
-    
     //  Player physics properties. Give the little guy a slight bounce.
     player.setCollideWorldBounds(true);
 
@@ -109,7 +118,11 @@ function create ()
         frames: [ { key: 'hero', frame: 0 } ],
         frameRate: 20
     });
-
+    this.anims.create({
+        key: 'attack',
+        frames: [ { key: 'hero', frame: 1 } ],
+        frameRate: 20
+    });
     this.anims.create({
         key: 'right',
         frames: [ { key: 'hero', frame: 0 } ],
@@ -118,18 +131,20 @@ function create ()
 
     //Creation of monsters
 
-    monster1 = this.physics.add.sprite(1000, curentHeight - 600, 'monster');
-    monster1.setCollideWorldBounds(true);
+    monster1 = this.physics.add.sprite(1600, curentHeight - 600, 'monster').setScale(0.9);
+    monsterGroup.push(monster1);
 
     //  Input Events
     cursors = this.input.keyboard.createCursorKeys();
 
     //Collide effect
     this.physics.add.collider(player, platforms);
-    this.physics.add.collider(monster1, platforms);
-    this.physics.add.collider(chest, platforms);
-    this.physics.add.collider(player, chest, getChest, null, this);
-    this.physics.add.collider(player, monster1, hitPlayer, null, this);
+    for(var i = 0; chestGroup.length > i; i++){
+        this.physics.add.collider(platforms,chestGroup[i]);
+    }
+    for(var i = 0; monsterGroup.length > i; i++){
+        this.physics.add.collider(platforms,monsterGroup[i]);
+    }
 }
 
 function update ()
@@ -138,29 +153,36 @@ function update ()
     {
         return;
     }
-    //reset doublejump
+
+    //reset doublejump on touching the ground
     if(player.body.touching.down && firstJump == true){
         secondJump = false;
         firstJump = false;
     }
+    //Player mouvement
     if (cursors.left.isDown)
     {
         player.setVelocityX(-360);
         updateCam(this);
         player.anims.play('left', true);
+        if(player.flipX == false){
+            player.flipX = true;
+        }
     }
     else if (cursors.right.isDown)
     {
         updateCam(this);
         player.setVelocityX(360);
         player.anims.play('right', true);
+        if(player.flipX == true){
+            player.flipX = false;
+        }
     }
     else
     {
         player.setVelocityX(0);
         player.anims.play('turn');
     }
-
     if (cursors.up.isDown && firstJump == false)
     {
         firstJump = true;
@@ -174,20 +196,40 @@ function update ()
             secondJump = false;
         }
     }
+    if (cursors.space.isDown){
+        player.anims.play('attack');
+        for(var i = 0; monsterGroup.length > i; i++){
+            if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), monsterGroup[i].getBounds())){
+                hitMonster(player, monsterGroup[i]);
+            }
+        }
+    }
     
+    //Chest Interaction
+    for(var i = 0; chestGroup.length > i; i++){
+        if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), chestGroup[i].getBounds())){
+            getChest(player, chestGroup[i]);
+        }
+    }
+
+    //MonsterInteraction
+    for(var i = 0; monsterGroup.length > i; i++){
+        if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), monsterGroup[i].getBounds()) && !monsterGroup[i].isDead){
+            hitPlayer(player, monsterGroup[i]);
+        }
+    }
+    //Monster Movement
 }
-
-
-function hitPlayer (player, monster)//if player hit a monster
-{
-    this.physics.pause(); 
-    player.setTint(0xff0000);
-    player.anims.play('turn');
-    gameOver = true;
+function hitPlayer(player, monster){
+    console.log("Player as been hit");
+}
+function hitMonster(player, monster){
+    console.log("Monster as been hit");
+    monster.destroy();
+    monster.isDead = true;
 }
 function getChest(player, chest){
     chest.anims.play("open");
-    console.log("got chest");
 }
 function updateCam(game){
     game.cameras.main.scrollX = player.x - 700
