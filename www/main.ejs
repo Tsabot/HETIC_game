@@ -34,6 +34,7 @@ var gameOver = false;
 
 //Group of sprite
 var chestGroup = [];
+var weaponGroup = [];
 var monsterGroup = [];
 var healthGroup = [];
 var spawning = false;
@@ -57,6 +58,7 @@ new class Spell{
 var firstJump = false;
 var secondJump = false;
 var secondJumpTimer;
+var accumulatedCursorDown;
 
 //Taille de la map
 var curentWidth = 3840;
@@ -98,7 +100,13 @@ function preload ()
     this.load.image('platform', './assets/plateform.png');
     this.load.image('heart', './assets/heart.png');
     this.load.spritesheet('chest', './assets/chest.png', { frameWidth: 256, frameHeight: 256 });
-    this.load.spritesheet('hero', './assets/hero.png', { frameWidth: 256, frameHeight: 192 });
+    this.load.spritesheet('hero_0', './assets/hero_0.png', { frameWidth: 300, frameHeight: 240 });
+    this.load.spritesheet('hero_1', './assets/hero_1.png', { frameWidth: 300, frameHeight: 240 });
+    this.load.spritesheet('hero_2', './assets/hero_2.png', { frameWidth: 300, frameHeight: 240 });
+    this.load.spritesheet('hero_3', './assets/hero_3.png', { frameWidth: 300, frameHeight: 240 });
+    this.load.spritesheet('w_sword', './assets/weapon_0.png', { frameWidth: 71, frameHeight: 96 });
+    this.load.spritesheet('w_hammer', './assets/weapon_2.png', { frameWidth: 90, frameHeight: 120 });
+    this.load.spritesheet('w_spear', './assets/weapon_1.png', { frameWidth: 96, frameHeight: 116 });
     this.load.spritesheet('monster', './assets/monster.png', { frameWidth: 128, frameHeight: 192 });
 }
 
@@ -119,21 +127,27 @@ function create ()
     platforms.create(curentWidth/1.5, curentHeight-50, 'platform').refreshBody();
 
     // The player and its settings
-    player = this.physics.add.sprite(30, 690, 'hero');
+    player = this.physics.add.sprite(120, 690, 'hero_0');
+    player.weaponState = "_0";
     player.health = 3;
     player.invincibleFrame = false;
     player.depth = 1;
     player.attackCooldown = true;
+    player.range = 50;
+    player.damage = 0.5;
+    player.attackSpeed = 500;
+    player.idWeaponEquiped;
     player.setCollideWorldBounds(true);
 
-    firstHeart = this.physics.add.sprite(30, 900, 'heart').setScale(0.15);
-    secondHeart = this.physics.add.sprite(70, 900, 'heart').setScale(0.15);
-    thirdHeart = this.physics.add.sprite(100, 900, 'heart').setScale(0.15);
+    firstHeart = this.physics.add.sprite(player.x - 80, 900, 'heart').setScale(0.15);
+    secondHeart = this.physics.add.sprite(player.x, 900, 'heart').setScale(0.15);
+    thirdHeart = this.physics.add.sprite(player.x + 80, 900, 'heart').setScale(0.15);
     healthGroup.push(firstHeart, secondHeart, thirdHeart);
-
     //  Creation of Chest
     chest1 = this.physics.add.sprite(900, curentHeight - 270, 'chest').setScale(0.5);
+    chest1.isOpen = false;
     chest2 = this.physics.add.sprite(3000, curentHeight - 270, 'chest').setScale(0.5);
+    chest2.isOpen = false;
     chestGroup.push(chest1, chest2);
 
     //Creation of monsters
@@ -152,33 +166,125 @@ function create ()
         this.physics.add.collider(platforms, chestGroup[i]);
     }
     //  Our player animations, turning, walking left and walking right.
-    this.anims.create({
-        key: 'left',
-        frames: [ { key: 'hero', frame: 3 } ],
-        frameRate: 10,
-        repeat: -1
-    });
+    
     this.anims.create({
         key: 'open',
         frames: [ { key: 'chest', frame: 1 } ],
         frameRate: 10
     });
     this.anims.create({
-        key: 'turn',
-        frames: [ { key: 'hero', frame: 0 } ],
+        key: 'still_0',
+        frames: [ { key: 'hero_0', frame: 0 } ],
         frameRate: 20
     });
     this.anims.create({
-        key: 'attack',
-        frames: this.anims.generateFrameNumbers('hero', { start: 2 }),
-        frameRate: 8,
+        key: 'jump_0',
+        frames: [ { key: 'hero_0', frame: 1 } ],
+        frameRate: 10,
         repeat: -1
     });
     this.anims.create({
-        key: 'right',
-        frames: [ { key: 'hero', frame: 3 } ]
+        key: 'attack_0',
+        frames: [ { key: 'hero_0', frame: 2 } ],
+        frameRate: 8
     });
-    updateCam(this);
+    this.anims.create({
+        key: 'moving_0',
+        frames: [ { key: 'hero_0', frame: 3 } ]
+    });
+    this.anims.create({
+        key: 'still_1',
+        frames: [ { key: 'hero_1', frame: 0 } ],
+        frameRate: 20
+    });
+    this.anims.create({
+        key: 'jump_1',
+        frames: [ { key: 'hero_1', frame: 1 } ],
+        frameRate: 10,
+        repeat: -1
+    });
+    this.anims.create({
+        key: 'attack_1',
+        frames: [ { key: 'hero_1', frame: 2 } ],
+        frameRate: 8
+    });
+    this.anims.create({
+        key: 'moving_1',
+        frames: [ { key: 'hero_1', frame: 3 } ]
+    });
+    this.anims.create({
+        key: 'still_2',
+        frames: [ { key: 'hero_2', frame: 0 } ],
+        frameRate: 20
+    });
+    this.anims.create({
+        key: 'jump_2',
+        frames: [ { key: 'hero_2', frame: 1 } ],
+        frameRate: 10,
+        repeat: -1
+    });
+    this.anims.create({
+        key: 'attack_2',
+        frames: [ { key: 'hero_2', frame: 2 } ],
+        frameRate: 8
+    });
+    this.anims.create({
+        key: 'moving_2',
+        frames: [ { key: 'hero_2', frame: 3 } ]
+    });
+    this.anims.create({
+        key: 'still_3',
+        frames: [ { key: 'hero_3', frame: 0 } ],
+        frameRate: 20
+    });
+    this.anims.create({
+        key: 'jump_3',
+        frames: [ { key: 'hero_3', frame: 1 } ],
+        frameRate: 10,
+        repeat: -1
+    });
+    this.anims.create({
+        key: 'attack_3',
+        frames: [ { key: 'hero_3', frame: 2 } ],
+        frameRate: 8
+    });
+    this.anims.create({
+        key: 'moving_3',
+        frames: [ { key: 'hero_3', frame: 3 } ]
+    });
+    this.anims.create({
+        key: 'attack_m',
+        frames: [ { key: 'monster', frame: 1 } ]
+    });
+    this.anims.create({
+        key: 'still_m',
+        frames: [ { key: 'monster', frame: 0 } ]
+    });
+    this.anims.create({
+        key: 'w_sword_basic',
+        frames: [ { key: 'w_sword', frame: 0 } ]
+    });
+    this.anims.create({
+        key: 'w_sword_glow',
+        frames: [ { key: 'w_sword', frame: 1 } ]
+    });
+    this.anims.create({
+        key: 'w_spear_basic',
+        frames: [ { key: 'w_spear', frame: 0 } ]
+    });
+    this.anims.create({
+        key: 'w_spear_glow',
+        frames: [ { key: 'w_spear', frame: 1 } ]
+    });
+    this.anims.create({
+        key: 'w_hammer_basic',
+        frames: [ { key: 'w_hammer', frame: 0 } ]
+    });
+    this.anims.create({
+        key: 'w_hammer_glow',
+        frames: [ { key: 'w_hammer', frame: 1 } ]
+    });
+    
 }
 
 function update ()
@@ -199,12 +305,12 @@ function update ()
         secondJump = false;
         firstJump = false;
     }
-    //Player mouvement
+    //Player Interaction
     if (cursors.left.isDown)
     {
         player.setVelocityX(-360);
         updateCam(this);
-        player.anims.play('left', true);
+        player.anims.play('moving' + player.weaponState, true);
         if(player.flipX == false){
             player.flipX = true;
         }
@@ -213,7 +319,7 @@ function update ()
     {
         updateCam(this);
         player.setVelocityX(360);
-        player.anims.play('right', true);
+        player.anims.play('moving ' + player.weaponState, true);
         if(player.flipX == true){
             player.flipX = false;
         }
@@ -221,7 +327,7 @@ function update ()
     else
     {
         player.setVelocityX(0);
-        player.anims.play('turn');
+        player.anims.play('still' + player.weaponState);
     }
     if (cursors.up.isDown && firstJump == false)
     {
@@ -237,13 +343,15 @@ function update ()
         }
     }
     if (cursors.space.isDown && player.attackCooldown == true){
-        player.anims.play('attack');
+        player.anims.play('attack' + player.weaponState);
         player.attackCooldown = false;
         setTimeout(()=>{
             player.attackCooldown = true;
-        }, 800)
+        }, player.attackSpeed)
         for(var i = 0; monsterGroup.length > i; i++){
-            if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), monsterGroup[i].getBounds())){
+            playerCoord = player.getBounds();
+            monsterCoord = monsterGroup[i].getBounds();
+            if(playerCoord.right - 90 + player.range > monsterCoord.left && playerCoord.left + 90 - player.range < monsterCoord.right){
                 if(monsterGroup[i].isDead == false){
                     hitMonster(player, monsterGroup[i]);
                     curentScore += 1;
@@ -252,6 +360,12 @@ function update ()
             }
         }
     }
+    if(cursors.down.isDown){
+        accumulatedCursorDown += 1;
+    }else if (cursors.down.isUp){
+        accumulatedCursorDown = 0;
+    }
+    
     
     //Chest Interaction
     for(var i = 0; chestGroup.length > i; i++){
@@ -260,15 +374,43 @@ function update ()
         }
     }
 
+    //Weapon Interaction
+    if(weaponGroup.length > 0){
+        for(var i = 0; weaponGroup.length > i; i++){
+            let weapon = weaponGroup[i];
+            if(weapon.isEquiped == false){
+                if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), weapon.getBounds())){
+                    weapon.anims.play(weapon.name + "_glow");
+                    if (accumulatedCursorDown == 10){
+                        accumulatedCursorDown = 0;
+                        dropWeapon(player, weapon);
+                        weapon.visible = false;
+                    }
+                }else weapon.anims.play(weapon.name + "_basic");
+            }
+        }
+    }
+
     //MonsterInteraction
     for(var i = 0; monsterGroup.length > i; i++){
-        if(player.getBounds().right - 70 > monsterGroup[i].getBounds().left && player.getBounds().left + 50 < monsterGroup[i].getBounds().right && player.getBounds().bottom >= monsterGroup[i].getBounds().top + 10){
-            if(player.invincibleFrame == false && monsterGroup[i].isDead == false){
-                hitPlayer(player, monsterGroup[i]);
-                player.invincibleFrame = true;
+        playerCoord = player.getBounds();
+        monsterCoord = monsterGroup[i].getBounds();
+        if(playerCoord.right - 90 > monsterCoord.left && playerCoord.left + 90 <monsterCoord.right && playerCoord.bottom >= monsterCoord.top){
+            if(monsterGroup[i].isDead == false){
+                monsterGroup[i].anims.play('attack_m');
+                lastI = i;
                 setTimeout(()=>{
-                    player.invincibleFrame = false;
-                }, 700)
+                    if(monsterGroup[lastI].isDead == false){
+                        monsterGroup[lastI].anims.play('still_m');
+                    }
+                },40, lastI, monsterGroup);
+                if(player.invincibleFrame == false){
+                    hitPlayer(player, monsterGroup[i]);
+                    player.invincibleFrame = true;
+                    setTimeout(()=>{
+                        player.invincibleFrame = false;
+                    }, 700)
+                }
             }
         }
     }
@@ -294,8 +436,12 @@ function update ()
             if(monsterGroup[i].isDead == false){
                 isPlayerOnLeft = localizePlayer(player, monsterGroup[i]);
                 if(isPlayerOnLeft == true){
+                    monsterGroup[i].flipX = true;
                     monsterGroup[i].setVelocityX(-160);
-                }else monsterGroup[i].setVelocityX(160);
+                }else{
+                    monsterGroup[i].flipX = false;
+                    monsterGroup[i].setVelocityX(160);
+                } 
             }
         }
     }
@@ -324,7 +470,31 @@ function hitMonster(player, monster){
     }
 }
 function getChest(player, chest){
-    chest.anims.play("open");
+    if(chest.isOpen == false){
+        chest.isOpen = true;
+        chest.anims.play("open");
+        chosenWeapon = getRandomInt(3);
+        createWeapon(chest.getBounds().x, chest.getBounds().y, chosenWeapon)
+    }
+}
+function dropWeapon(player, weapon){
+    if(player.idWeaponEquiped >= 0){
+        console.log(player.idWeaponEquiped);
+        console.log(weapon.id);
+        oldWeapon = player.idWeaponEquiped;
+        oldWeapon = weaponGroup[oldWeapon];
+        oldWeapon.visible = true;
+        oldWeapon.isEquiped = false;
+        oldWeapon.x = player.x;
+        oldWeapon.y = player.y;
+    }
+    player.range = weapon.range;
+    player.damage = weapon.damage;
+    player.weaponState = weapon.weaponState;
+    player.attackSpeed = weapon.attackSpeed;
+    player.idWeaponEquiped = weapon.id;
+    weapon.isEquiped = true;
+    
 }
 function updateCam(game){
     game.cameras.main.scrollX = player.x - 700;
@@ -357,9 +527,9 @@ function createMonster(x, y, scale, facingRight, health, damage){
     let monster = theGame.physics.add.sprite(x, y, "monster").setScale(scale);
     monster.initialX = x;
     if(!facingRight){
-        facingRight = true;
+        facingRight = false;
     }
-    monster.facingRight = facingRight;
+    monster.flipX = facingRight;
     if(!health){
         health = 100;
     }
@@ -371,6 +541,43 @@ function createMonster(x, y, scale, facingRight, health, damage){
     monster.isDead = false;
     theGame.physics.add.collider(platforms, monster);
     monsterGroup.push(monster);
+}
+
+function createWeapon(x, y, weaponId){
+    let chosenOne;
+    if(weaponId == 1){
+        range = 60;
+        damage = 1;
+        attackSpeed = 600;
+        chosenOne = "w_sword";
+        weaponState = "_1"
+    }else if(weaponId == 2){
+        range = 100;
+        damage = 1.5;
+        attackSpeed = 900;
+        chosenOne = "w_spear";
+        weaponState = "_2"
+    }else {
+        range = 80;
+        damage = 2;
+        attackSpeed = 1000;
+        chosenOne = "w_hammer";
+        weaponState = "_3"
+    }
+    let weapon = theGame.physics.add.sprite(x, y, chosenOne);
+    weapon.name = chosenOne;
+    weapon.range = range;
+    weapon.damage = damage;
+    weapon.isEquiped = false;
+    weapon.attackSpeed = attackSpeed;
+    weapon.weaponState = weaponState;
+    weapon.id = weaponGroup.length;
+    theGame.physics.add.collider(platforms, weapon);
+    weaponGroup.push(weapon);
+}
+//Initiaux
+function getRandomInt(max) {
+  return Math.floor(Math.random() * Math.floor(max)) + 1;
 }
 </script>
 
