@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <title>SUperNodeGame</title>
     <script src="js/phaser.js"></script>
+    <script src="js/animation.js"></script>
+    <script src="js/monster.js"></script>
+    <script src="js/weapon.js"></script>
+    <script src="js/figth.js"></script>
     <style type="text/css">
         body {
             margin: 0;
@@ -16,43 +20,44 @@
 <script type="text/javascript">
 
 /*TO DO
-Add item out of chest
-Add collect item
-Add new spell on UI
-Add few spell
-Add key display
+Mechanics
+Add spells || Consumable
+Add dash
+
+Gameplay
+Add life on monster -/
+See damage you dealt -/
+Add knockBacks on weapons -/
+Add player health bar -/ 
+Add enemies types
+Add boss mechanics
+
+Design:
+Optimize weapon Droping
+Optimize damage dealt text style
+Optimize Health Bar
+
+Think about new weapons (Rarity ?)
+
+
+Make the make accurate size and add logic level design
+->Create an exit to the next level
+
+Load stuff only when cameras sees it
+Add key display (tutorial like)
 */
 
 var theGame ;
-var spawnInterval;
 var curentScore = 0;
 var player;
 var platforms;
 var cursors;
-var score = 0;
 var gameOver = false;
 
 //Group of sprite
 var chestGroup = [];
 var weaponGroup = [];
 var monsterGroup = [];
-var healthGroup = [];
-var spawning = false;
-
-/*
-weapons
-new class Weapon{
-    name;
-    bonusRange;
-    damage;
-}
-spell
-new class Spell{
-    name;
-    damage;
-    range;
-    duration;
-}*/
 
 //Movement of player
 var firstJump = false;
@@ -61,12 +66,14 @@ var secondJumpTimer;
 var accumulatedCursorDown;
 
 //Taille de la map
-var curentWidth = 3840;
-var curentHeight = 1000;
+var curentWidth;
+var curentHeight;
 
 window.onload = initiate();
 
 function initiate(){
+    curentWidth = 3840;
+    curentHeight = 1000;
     var player = null;
     var bombs = null;
     var platforms = null;
@@ -91,25 +98,21 @@ function initiate(){
         }
     };
     var game = new Phaser.Game(config);
-    
 }
-
 function preload ()
 {
     this.load.image('background1_1', './assets/background1_1.png');
     this.load.image('platform', './assets/plateform.png');
-    this.load.image('heart', './assets/heart.png');
     this.load.spritesheet('chest', './assets/chest.png', { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('hero_0', './assets/hero_0.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_1', './assets/hero_1.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_2', './assets/hero_2.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_3', './assets/hero_3.png', { frameWidth: 300, frameHeight: 240 });
-    this.load.spritesheet('w_sword', './assets/weapon_0.png', { frameWidth: 71, frameHeight: 96 });
+    this.load.spritesheet('w_sword', './assets/weapon_0.png', { frameWidth: 117, frameHeight: 160 });
     this.load.spritesheet('w_hammer', './assets/weapon_2.png', { frameWidth: 90, frameHeight: 120 });
     this.load.spritesheet('w_spear', './assets/weapon_1.png', { frameWidth: 96, frameHeight: 116 });
     this.load.spritesheet('monster', './assets/monster.png', { frameWidth: 128, frameHeight: 192 });
 }
-
 function create ()
 {
     theGame = this;
@@ -118,7 +121,7 @@ function create ()
     var secondBackground = this.add.image(curentWidth/1.5, curentHeight/2, 'background1_1');
     secondBackground.flipX = true;
     this.cameras.main.setBounds(0, 0, curentWidth*2, curentHeight);
-    textScore = this.add.text(-100, 100, 'Score: ' + curentScore, { color: '#FFFFFF' });
+    
     //  The platforms group contains the ground and the 2 ledges we can jump on
     platforms = this.physics.add.staticGroup();
     //  Here we create the ground.
@@ -126,172 +129,51 @@ function create ()
     platforms.create(curentWidth/4, curentHeight-50, 'platform').refreshBody();
     platforms.create(curentWidth/1.5, curentHeight-50, 'platform').refreshBody();
 
+    //Adding keyBoard detection
+    if (window.navigator.language != "fr-FR") {
+        keyDashLeft = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q); 
+    }else keyDashLeft = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    keyDashRight = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    if (window.navigator.language != "fr-FR") {
+        keyDrop = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W); 
+    }else keyDrop = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    
     // The player and its settings
-    player = this.physics.add.sprite(120, 690, 'hero_0');
-    player.weaponState = "_0";
-    player.health = 3;
-    player.invincibleFrame = false;
-    player.depth = 1;
-    player.attackCooldown = true;
-    player.range = 50;
-    player.damage = 0.5;
-    player.attackSpeed = 500;
-    player.idWeaponEquiped;
-    player.setCollideWorldBounds(true);
+    initialisePlayer();
 
-    firstHeart = this.physics.add.sprite(player.x - 80, 900, 'heart').setScale(0.15);
-    secondHeart = this.physics.add.sprite(player.x, 900, 'heart').setScale(0.15);
-    thirdHeart = this.physics.add.sprite(player.x + 80, 900, 'heart').setScale(0.15);
-    healthGroup.push(firstHeart, secondHeart, thirdHeart);
+    //Add UI
+    graphics = this.add.graphics({ fillStyle: { color: 0x00D000 } });
+    healthBar = new Phaser.Geom.Rectangle(this.cameras.main.scrollX + 40, this.cameras.main.scrollY + 70, 300, 75);
+    graphics.fillRectShape(healthBar);
+
     //  Creation of Chest
-    chest1 = this.physics.add.sprite(900, curentHeight - 270, 'chest').setScale(0.5);
-    chest1.isOpen = false;
-    chest2 = this.physics.add.sprite(3000, curentHeight - 270, 'chest').setScale(0.5);
-    chest2.isOpen = false;
-    chestGroup.push(chest1, chest2);
+    createChest(1400, curentHeight - 270);
+    createChest(1200, curentHeight - 270);
+    createChest(1000, curentHeight - 270);
+    createChest(800, curentHeight - 270);
+    createChest(600, curentHeight - 270);
 
-    //Creation of monsters
+    //Creation of monster
     createMonster(1600, curentHeight - 270, 0.9);
+    createMonster(1900, curentHeight - 270, 0.9);
+    createMonster(2100, curentHeight - 270, 0.9);
 
     //  Input Events
     cursors = this.input.keyboard.createCursorKeys();
 
     //Collide effect
     this.physics.add.collider(player, platforms);
-
-    for(var i = 0; healthGroup.length > i; i++){
-        healthGroup[i].body.setAllowGravity(false)
-    }
     for(var i = 0; chestGroup.length > i; i++){
         this.physics.add.collider(platforms, chestGroup[i]);
     }
     //  Our player animations, turning, walking left and walking right.
-    
-    this.anims.create({
-        key: 'open',
-        frames: [ { key: 'chest', frame: 1 } ],
-        frameRate: 10
-    });
-    this.anims.create({
-        key: 'still_0',
-        frames: [ { key: 'hero_0', frame: 0 } ],
-        frameRate: 20
-    });
-    this.anims.create({
-        key: 'jump_0',
-        frames: [ { key: 'hero_0', frame: 1 } ],
-        frameRate: 10,
-        repeat: -1
-    });
-    this.anims.create({
-        key: 'attack_0',
-        frames: [ { key: 'hero_0', frame: 2 } ],
-        frameRate: 8
-    });
-    this.anims.create({
-        key: 'moving_0',
-        frames: [ { key: 'hero_0', frame: 3 } ]
-    });
-    this.anims.create({
-        key: 'still_1',
-        frames: [ { key: 'hero_1', frame: 0 } ],
-        frameRate: 20
-    });
-    this.anims.create({
-        key: 'jump_1',
-        frames: [ { key: 'hero_1', frame: 1 } ],
-        frameRate: 10,
-        repeat: -1
-    });
-    this.anims.create({
-        key: 'attack_1',
-        frames: [ { key: 'hero_1', frame: 2 } ],
-        frameRate: 8
-    });
-    this.anims.create({
-        key: 'moving_1',
-        frames: [ { key: 'hero_1', frame: 3 } ]
-    });
-    this.anims.create({
-        key: 'still_2',
-        frames: [ { key: 'hero_2', frame: 0 } ],
-        frameRate: 20
-    });
-    this.anims.create({
-        key: 'jump_2',
-        frames: [ { key: 'hero_2', frame: 1 } ],
-        frameRate: 10,
-        repeat: -1
-    });
-    this.anims.create({
-        key: 'attack_2',
-        frames: [ { key: 'hero_2', frame: 2 } ],
-        frameRate: 8
-    });
-    this.anims.create({
-        key: 'moving_2',
-        frames: [ { key: 'hero_2', frame: 3 } ]
-    });
-    this.anims.create({
-        key: 'still_3',
-        frames: [ { key: 'hero_3', frame: 0 } ],
-        frameRate: 20
-    });
-    this.anims.create({
-        key: 'jump_3',
-        frames: [ { key: 'hero_3', frame: 1 } ],
-        frameRate: 10,
-        repeat: -1
-    });
-    this.anims.create({
-        key: 'attack_3',
-        frames: [ { key: 'hero_3', frame: 2 } ],
-        frameRate: 8
-    });
-    this.anims.create({
-        key: 'moving_3',
-        frames: [ { key: 'hero_3', frame: 3 } ]
-    });
-    this.anims.create({
-        key: 'attack_m',
-        frames: [ { key: 'monster', frame: 1 } ]
-    });
-    this.anims.create({
-        key: 'still_m',
-        frames: [ { key: 'monster', frame: 0 } ]
-    });
-    this.anims.create({
-        key: 'w_sword_basic',
-        frames: [ { key: 'w_sword', frame: 0 } ]
-    });
-    this.anims.create({
-        key: 'w_sword_glow',
-        frames: [ { key: 'w_sword', frame: 1 } ]
-    });
-    this.anims.create({
-        key: 'w_spear_basic',
-        frames: [ { key: 'w_spear', frame: 0 } ]
-    });
-    this.anims.create({
-        key: 'w_spear_glow',
-        frames: [ { key: 'w_spear', frame: 1 } ]
-    });
-    this.anims.create({
-        key: 'w_hammer_basic',
-        frames: [ { key: 'w_hammer', frame: 0 } ]
-    });
-    this.anims.create({
-        key: 'w_hammer_glow',
-        frames: [ { key: 'w_hammer', frame: 1 } ]
-    });
-    
+    createAnimation(this);
 }
-
 function update ()
 {
-    if (gameOver)//if player lose
+    //if player loses
+    if (gameOver)
     {
-        clearInterval(spawnInterval);
         player.angle = 90;
         setTimeout(()=>{
             player.visible = false;
@@ -299,17 +181,16 @@ function update ()
         this.physics.pause();
         return;
     }
-
-    //reset doublejump on touching the ground
+    //Player Movements
+    //Reset doublejump on touching the ground
     if(player.body.touching.down && firstJump == true){
         secondJump = false;
         firstJump = false;
     }
-    //Player Interaction
     if (cursors.left.isDown)
     {
-        player.setVelocityX(-360);
         updateCam(this);
+        player.setVelocityX(-360);
         player.anims.play('moving' + player.weaponState, true);
         if(player.flipX == false){
             player.flipX = true;
@@ -329,8 +210,28 @@ function update ()
         player.setVelocityX(0);
         player.anims.play('still' + player.weaponState);
     }
+    if(keyDashLeft.isDown && player.leftDash == true){
+        player.leftDash = false;
+        player.setVelocityX(-900);
+        setTimeout(()=>{
+            player.leftDash = true; 
+        }, 300);
+    }else if(keyDashRight.isDown && player.rightDash == true){
+        let speed = 1800;
+        player.rightDash = false;
+        player.setVelocityX(speed);
+        let dashCooldown = setInterval(()=>{
+            speed += -100;
+            player.setVelocityX(speed);
+            if(speed <= 0){
+                clearInterval(dashCooldown);
+                player.rightDash == true
+            }
+        }, 25)
+    }
     if (cursors.up.isDown && firstJump == false)
     {
+        updateCam(this);
         firstJump = true;
         player.setVelocityY(-300);
         secondJumpTimer = setTimeout(() => {
@@ -342,6 +243,8 @@ function update ()
             secondJump = false;
         }
     }
+
+    //Player Attack
     if (cursors.space.isDown && player.attackCooldown == true){
         player.anims.play('attack' + player.weaponState);
         player.attackCooldown = false;
@@ -354,18 +257,16 @@ function update ()
             if(playerCoord.right - 90 + player.range > monsterCoord.left && playerCoord.left + 90 - player.range < monsterCoord.right){
                 if(monsterGroup[i].isDead == false){
                     hitMonster(player, monsterGroup[i]);
-                    curentScore += 1;
-                    textScore.setText("Score: " + curentScore);
                 }
             }
         }
     }
+    //Player Item Pickup
     if(cursors.down.isDown){
         accumulatedCursorDown += 1;
     }else if (cursors.down.isUp){
         accumulatedCursorDown = 0;
     }
-    
     
     //Chest Interaction
     for(var i = 0; chestGroup.length > i; i++){
@@ -393,17 +294,18 @@ function update ()
 
     //MonsterInteraction
     for(var i = 0; monsterGroup.length > i; i++){
-        playerCoord = player.getBounds();
-        monsterCoord = monsterGroup[i].getBounds();
-        if(playerCoord.right - 90 > monsterCoord.left && playerCoord.left + 90 <monsterCoord.right && playerCoord.bottom >= monsterCoord.top){
-            if(monsterGroup[i].isDead == false){
-                monsterGroup[i].anims.play('attack_m');
+        let monster = monsterGroup[i];
+        if(monster.isDead == false){
+            let playerCoord = player.getBounds();
+            let monsterCoord = monster.getBounds();
+            if(playerCoord.right - 90 > monsterCoord.left && playerCoord.left + 90 <monsterCoord.right && playerCoord.bottom >= monsterCoord.top){
+                monster.anims.play('attack_m');
                 lastI = i;
                 setTimeout(()=>{
                     if(monsterGroup[lastI].isDead == false){
                         monsterGroup[lastI].anims.play('still_m');
                     }
-                },40, lastI, monsterGroup);
+                }, 40, lastI, monsterGroup);
                 if(player.invincibleFrame == false){
                     hitPlayer(player, monsterGroup[i]);
                     player.invincibleFrame = true;
@@ -412,62 +314,22 @@ function update ()
                     }, 700)
                 }
             }
+            //monster movement
+            isPlayerRight = isPlayerOnRight(player, monster);
+            if(player.x + 500 > monster.x || player.x - 500 > monster.x || monster.aggro == true){
+                monster.aggro = true;
+                if(monster.isKnocked == false){
+                    if(isPlayerRight == true){
+                        monster.body.velocity.x = -200;
+                    }else{
+                        monster.body.velocity.x = + 200;
+                    }
+                }
+            }
         }
     }
     //Monster Movement
-    if(monsterGroup[0].isDead == false){
-        monster1 = monsterGroup[0];
-        if(monster1.x < monster1.initialX+300 && monster1.facingRight == true){
-            monster1.setVelocityX(160);
-        }else if(monster1.x > monster1.initialX - 300){
-            if(monster1.facingRight == true){
-                monster1.facingRight = false
-                monster1.flipX = true;
-            }
-            monster1.setVelocityX(-160);
-        }else{
-            monster1.flipX = false;
-            monster1.facingRight = true;
-        }
-    }
-    //spawn of monster if first one is defeated
-    if(spawning == true){
-        for(var i = 0; monsterGroup.length > i; i++){
-            if(monsterGroup[i].isDead == false){
-                isPlayerOnLeft = localizePlayer(player, monsterGroup[i]);
-                if(isPlayerOnLeft == true){
-                    monsterGroup[i].flipX = true;
-                    monsterGroup[i].setVelocityX(-160);
-                }else{
-                    monsterGroup[i].flipX = false;
-                    monsterGroup[i].setVelocityX(160);
-                } 
-            }
-        }
-    }
-}
-function hitPlayer(player, monster){
-    takeDmg(player);
-    player.health += -1;
-    if(player.health == 2){
-        thirdHeart.destroy();
-    }else if(player.health == 1){
-        secondHeart.destroy();
-    } else firstHeart.destroy();
-    if(player.health == 0){
-        gameOver = true;
-        return;
-    }
-}
-function hitMonster(player, monster){
-    monster.destroy();
-    monster.isDead = true;
-    if(monsterGroup[0].isDead == true && spawning == false){
-        spawning = true;
-        var spawnInterval = setInterval(()=>{
-            createMonster(2200, curentHeight - 370, 0.9)
-        }, 600)
-    }
+    
 }
 function getChest(player, chest){
     if(chest.isOpen == false){
@@ -477,105 +339,49 @@ function getChest(player, chest){
         createWeapon(chest.getBounds().x, chest.getBounds().y, chosenWeapon)
     }
 }
-function dropWeapon(player, weapon){
-    if(player.idWeaponEquiped >= 0){
-        console.log(player.idWeaponEquiped);
-        console.log(weapon.id);
-        oldWeapon = player.idWeaponEquiped;
-        oldWeapon = weaponGroup[oldWeapon];
-        oldWeapon.visible = true;
-        oldWeapon.isEquiped = false;
-        oldWeapon.x = player.x;
-        oldWeapon.y = player.y;
-    }
-    player.range = weapon.range;
-    player.damage = weapon.damage;
-    player.weaponState = weapon.weaponState;
-    player.attackSpeed = weapon.attackSpeed;
-    player.idWeaponEquiped = weapon.id;
-    weapon.isEquiped = true;
-    
-}
 function updateCam(game){
-    game.cameras.main.scrollX = player.x - 700;
-    textScore.x = game.cameras.main.scrollX + 300;
-    firstHeart.x = player.x - 80;
-    secondHeart.x = player.x;
-    thirdHeart.x = player.x + 80;
+    cameras = game.cameras.main;
+    healthBar.setPosition(cameras.scrollX + 40, cameras.scrollY + 70);
+    graphics.clear();
+    graphics.fillRectShape(healthBar);
+    cameras.scrollX = player.x - 700;
 }
-function takeDmg(player){
-    var damageInterval = setInterval(() => {
-        if(player.visible == true){
-            player.visible = false;
-        }
-        else player.visible = true;
-        
-    }, 150);
-    setTimeout(()=>{
-        clearInterval(damageInterval);
-        player.visible = true;
-    }, 600);
-}
-function localizePlayer(player, monster){
+function isPlayerOnRight(player, monster){
     if(player.x < monster.x){
         return true;
     }else return false;
 }
-
 //Function create special sprites
-function createMonster(x, y, scale, facingRight, health, damage){
-    let monster = theGame.physics.add.sprite(x, y, "monster").setScale(scale);
-    monster.initialX = x;
-    if(!facingRight){
-        facingRight = false;
+//monster are in monster.js
+function createChest(x, y, scale){
+    if(!scale){
+        scale = 0.4;
     }
-    monster.flipX = facingRight;
-    if(!health){
-        health = 100;
-    }
-    monster.health = health;
-    if(!damage){
-        damage = 1;
-    }
-    monster.damage = damage;
-    monster.isDead = false;
-    theGame.physics.add.collider(platforms, monster);
-    monsterGroup.push(monster);
+    let chest = theGame.physics.add.sprite(x, y, "chest").setScale(scale);
+    chest.isOpen = false;
+    theGame.physics.add.collider(platforms, chest);
+    chestGroup.push(chest);
 }
-
-function createWeapon(x, y, weaponId){
-    let chosenOne;
-    if(weaponId == 1){
-        range = 60;
-        damage = 1;
-        attackSpeed = 600;
-        chosenOne = "w_sword";
-        weaponState = "_1"
-    }else if(weaponId == 2){
-        range = 100;
-        damage = 1.5;
-        attackSpeed = 900;
-        chosenOne = "w_spear";
-        weaponState = "_2"
-    }else {
-        range = 80;
-        damage = 2;
-        attackSpeed = 1000;
-        chosenOne = "w_hammer";
-        weaponState = "_3"
-    }
-    let weapon = theGame.physics.add.sprite(x, y, chosenOne);
-    weapon.name = chosenOne;
-    weapon.range = range;
-    weapon.damage = damage;
-    weapon.isEquiped = false;
-    weapon.attackSpeed = attackSpeed;
-    weapon.weaponState = weaponState;
-    weapon.id = weaponGroup.length;
-    theGame.physics.add.collider(platforms, weapon);
-    weaponGroup.push(weapon);
+function initialisePlayer(){
+    player = theGame.physics.add.sprite(150, 690, 'hero_0');
+    player.health = 50;
+    player.maxHealth = 50;
+    player.depth = 1;
+    player.range = 50;
+    player.damage = 10;
+    player.leftDash = true;
+    player.rightDash = true;
+    player.attackSpeed = 500;
+    player.idWeaponEquiped;
+    player.invincibleFrame = false;
+    player.attackCooldown = true;
+    player.isStun = false;
+    player.isKnocked = false;
+    player.weaponState = "_0";
+    player.knockBack = 30;
+    player.setCollideWorldBounds(true);
 }
-//Initiaux
+//Basic Function
 function getRandomInt(max) {
   return Math.floor(Math.random() * Math.floor(max)) + 1;
 }
