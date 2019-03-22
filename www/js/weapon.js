@@ -22,23 +22,23 @@ function createWeapon(x, y, weaponId){
         range = 60;
         damage = 20;
         attackSpeed = 600;
-        knockBack = 100;
+        knockBack = 70;
         chosenOne = "w_sword"; // 33,3
         weaponState = "_1" 
         scale = 0.6;
     }else if(weaponId == 2){
-        range = 100;
+        range = 90;
         damage = 25;
         attackSpeed = 850;
-        knockBack = 80;
+        knockBack = 110;
         chosenOne = "w_spear"; //29,4
         weaponState = "_2" 
         scale = 1;
     }else {
-        range = 80;
+        range = 55;
         damage = 35;
         attackSpeed = 1100;
-        knockBack = 120;
+        knockBack = 220;
         chosenOne = "w_hammer"; //31,8
         weaponState = "_3" 
         scale = 1;

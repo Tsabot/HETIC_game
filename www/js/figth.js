@@ -13,6 +13,7 @@ function hitMonster(player, monster){
     createDamageText(monster, player)
     if(monster.health <= 0){
         monster.destroy();
+        enemyDrop(monster);
         monster.isDead = true;
         curentScore += 1;
     }
@@ -24,8 +25,9 @@ function knockBackFoes(attacker ,defender){
         power = -power;
     }
     defender.body.velocity.x = power;
+    defender.body.velocity.y = -power/2;
     defender.isKnocked = true;
-    knockBackInterval = setInterval(()=>{
+    let knockBackInterval = setInterval(()=>{
         if(previousSpeed < 0 && defender.isDead == false && power > 0){
             power += -5;
             defender.body.velocity.x += -5;
@@ -42,7 +44,7 @@ function knockBackFoes(attacker ,defender){
     }, 5);
 }
 function takeDmg(player){
-    var damageInterval = setInterval(() => {
+    let damageInterval = setInterval(() => {
         if(player.visible == true){
             player.visible = false;
         }
@@ -53,4 +55,29 @@ function takeDmg(player){
         clearInterval(damageInterval);
         player.visible = true;
     }, 600);
+}
+function enemyDrop(monster){
+    let randomInt = getRandomInt(monster.dropRate);
+    if(randomInt == 1){
+        createHealing(monster.x, monster.y);
+    }
+}
+function getHeal(heal, player){
+    if(player.health != player.maxHealth){
+        heal.isConsumed = true;
+        healGroup.splice(heal.id, 1);
+        resetHealId();
+        heal.destroy();
+        player.health = player.health + 0.15 * player.maxHealth;
+        if(player.health > player.maxHealth){
+            player.health = player.maxHealth;
+        }
+        animateHp(player.maxHealth, player.health);
+    }
+}
+function resetHealId(){
+    for(let i = 0; healGroup.length > i; i++){
+        heal = healGroup[i];
+        heal.id = i;
+    }
 }

@@ -86,12 +86,12 @@ function createAnimation(theGame){
         frames: [ { key: 'hero_3', frame: 3 } ]
     });
     theGame.anims.create({
-        key: 'attack_m',
-        frames: [ { key: 'monster', frame: 1 } ]
+        key: 'attack_m_2',
+        frames: [ { key: 'monster_2', frame: 1 } ]
     });
     theGame.anims.create({
-        key: 'still_m',
-        frames: [ { key: 'monster', frame: 0 } ]
+        key: 'still_m_2',
+        frames: [ { key: 'monster_2', frame: 0 } ]
     });
     theGame.anims.create({
         key: 'w_sword_basic',

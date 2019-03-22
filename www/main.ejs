@@ -20,66 +20,69 @@
 <script type="text/javascript">
 
 /*TO DO
-Mechanics
-Add spells || Consumable
-Add dash
 
-Gameplay
-Add life on monster -/
-See damage you dealt -/
-Add knockBacks on weapons -/
-Add player health bar -/ 
-Add enemies types
+Mechanics / gameplay:
+Add random enemy drop healing -/
+Add enemies types -/
+Add enemies types mechanics
 Add boss mechanics
+Add new weapons (Rarity/Range)
+Add down mechanics when player is on a transparent plateform
 
-Design:
+Design/optimization:
 Optimize weapon Droping
 Optimize damage dealt text style
 Optimize Health Bar
+Optimize animations
+Optimize Code comment
+Optimize Gravity
+Load stuff only when cameras sees it
 
-Think about new weapons (Rarity ?)
-
-
+Level Design:
 Make the make accurate size and add logic level design
 ->Create an exit to the next level
-
-Load stuff only when cameras sees it
 Add key display (tutorial like)
+
+ToDEBUG
+healthBar move too much (updateCam not called enough)
+actualyze Item whelding when item Catch
+
 */
 
-var theGame ;
-var curentScore = 0;
-var player;
-var platforms;
-var cursors;
-var gameOver = false;
+let theGame ;
+let curentScore = 0;
+let player;
+let platforms;
+let cursors;
+let gameOver = false;
 
 //Group of sprite
-var chestGroup = [];
-var weaponGroup = [];
-var monsterGroup = [];
+let chestGroup = [];
+let weaponGroup = [];
+let monsterGroup = [];
+let healGroup = [];
 
 //Movement of player
-var firstJump = false;
-var secondJump = false;
-var secondJumpTimer;
-var accumulatedCursorDown;
+let firstJump = false;
+let secondJump = false;
+let secondJumpTimer;
+let accumulatedCursorDown;
 
 //Taille de la map
-var curentWidth;
-var curentHeight;
+let curentWidth;
+let curentHeight;
 
 window.onload = initiate();
 
 function initiate(){
     curentWidth = 3840;
     curentHeight = 1000;
-    var player = null;
-    var bombs = null;
-    var platforms = null;
-    var cursors = null;
+    let player = null;
+    let bombs = null;
+    let platforms = null;
+    let cursors = null;
 
-    var config = {
+    let config = {
         type: Phaser.AUTO,
         width: curentWidth,
         height: curentHeight,
@@ -87,7 +90,7 @@ function initiate(){
         physics: {
             default: 'arcade',
             arcade: {
-                gravity: { y: 400 },
+                gravity: { y: 500 },
                 debug: false
             }
         },
@@ -97,28 +100,31 @@ function initiate(){
             update: update
         }
     };
-    var game = new Phaser.Game(config);
+    let game = new Phaser.Game(config);
 }
 function preload ()
 {
     this.load.image('background1_1', './assets/background1_1.png');
     this.load.image('platform', './assets/plateform.png');
+    this.load.image('heart', './assets/heart.png');
     this.load.spritesheet('chest', './assets/chest.png', { frameWidth: 256, frameHeight: 256 });
+    //spriteSheet of the different whelding of weapons
     this.load.spritesheet('hero_0', './assets/hero_0.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_1', './assets/hero_1.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_2', './assets/hero_2.png', { frameWidth: 300, frameHeight: 240 });
     this.load.spritesheet('hero_3', './assets/hero_3.png', { frameWidth: 300, frameHeight: 240 });
+    //spriteSheet of the weapons
     this.load.spritesheet('w_sword', './assets/weapon_0.png', { frameWidth: 117, frameHeight: 160 });
     this.load.spritesheet('w_hammer', './assets/weapon_2.png', { frameWidth: 90, frameHeight: 120 });
-    this.load.spritesheet('w_spear', './assets/weapon_1.png', { frameWidth: 96, frameHeight: 116 });
-    this.load.spritesheet('monster', './assets/monster.png', { frameWidth: 128, frameHeight: 192 });
+    this.load.spritesheet('w_spear', './assets/weapon_1.png', { frameWidth: 136.5, frameHeight: 169 });
+    //spriteSheet of the different monsters
+    this.load.spritesheet('monster_2', './assets/monster_2.png', { frameWidth: 128, frameHeight: 192 });
 }
 function create ()
 {
-    theGame = this;
-    //  A simple background for our game
+    theGame = this; // Global variable with all game content (may prvoque lags, to clear perhaps)
     this.add.image(curentWidth/4, curentHeight/2, 'background1_1');
-    var secondBackground = this.add.image(curentWidth/1.5, curentHeight/2, 'background1_1');
+    let secondBackground = this.add.image(curentWidth/1.5, curentHeight/2, 'background1_1');
     secondBackground.flipX = true;
     this.cameras.main.setBounds(0, 0, curentWidth*2, curentHeight);
     
@@ -154,16 +160,16 @@ function create ()
     createChest(600, curentHeight - 270);
 
     //Creation of monster
-    createMonster(1600, curentHeight - 270, 0.9);
-    createMonster(1900, curentHeight - 270, 0.9);
-    createMonster(2100, curentHeight - 270, 0.9);
+    createMonster(1600, curentHeight - 270, 2, 0.9);
+    createMonster(1900, curentHeight - 270, 2, 0.9);
+    createMonster(2100, curentHeight - 270, 2, 0.9);
 
     //  Input Events
     cursors = this.input.keyboard.createCursorKeys();
 
     //Collide effect
     this.physics.add.collider(player, platforms);
-    for(var i = 0; chestGroup.length > i; i++){
+    for(let i = 0; chestGroup.length > i; i++){
         this.physics.add.collider(platforms, chestGroup[i]);
     }
     //  Our player animations, turning, walking left and walking right.
@@ -186,6 +192,8 @@ function update ()
     if(player.body.touching.down && firstJump == true){
         secondJump = false;
         firstJump = false;
+        player.leftDash = true;
+        player.rightDash = true;
     }
     if (cursors.left.isDown)
     {
@@ -211,26 +219,43 @@ function update ()
         player.anims.play('still' + player.weaponState);
     }
     if(keyDashLeft.isDown && player.leftDash == true){
+        let speed = -1400;
         player.leftDash = false;
-        player.setVelocityX(-900);
-        setTimeout(()=>{
-            player.leftDash = true; 
-        }, 300);
+        player.setVelocityX(speed);
+        let dashCooldownLeft = setInterval(()=>{
+            updateCam(this);
+            speed += 100;
+            player.setVelocityX(speed);
+            if(speed >= 0){
+                setTimeout(()=>{
+                    if(player.body.touching.down && secondJump == false){
+                        player.leftDash = true
+                    }
+                }, 900);
+                clearInterval(dashCooldownLeft);
+            }
+        }, 25);
     }else if(keyDashRight.isDown && player.rightDash == true){
-        let speed = 1800;
+        let speed = 1400;
         player.rightDash = false;
         player.setVelocityX(speed);
-        let dashCooldown = setInterval(()=>{
+        let dashCooldownRight = setInterval(()=>{
+            updateCam(this);
             speed += -100;
             player.setVelocityX(speed);
             if(speed <= 0){
-                clearInterval(dashCooldown);
-                player.rightDash == true
+                setTimeout(()=>{
+                    if(player.body.touching.down && secondJump == false){
+                        player.rightDash = true
+                    }
+                }, 900);
+                clearInterval(dashCooldownRight);
             }
-        }, 25)
+        }, 25);
     }
     if (cursors.up.isDown && firstJump == false)
     {
+        animateHp(player.maxHealth, player.health);
         updateCam(this);
         firstJump = true;
         player.setVelocityY(-300);
@@ -251,7 +276,7 @@ function update ()
         setTimeout(()=>{
             player.attackCooldown = true;
         }, player.attackSpeed)
-        for(var i = 0; monsterGroup.length > i; i++){
+        for(let i = 0; monsterGroup.length > i; i++){
             playerCoord = player.getBounds();
             monsterCoord = monsterGroup[i].getBounds();
             if(playerCoord.right - 90 + player.range > monsterCoord.left && playerCoord.left + 90 - player.range < monsterCoord.right){
@@ -262,14 +287,14 @@ function update ()
         }
     }
     //Player Item Pickup
-    if(cursors.down.isDown){
+    if(keyDrop.isDown){
         accumulatedCursorDown += 1;
-    }else if (cursors.down.isUp){
+    }else if (keyDrop.isUp){
         accumulatedCursorDown = 0;
     }
     
     //Chest Interaction
-    for(var i = 0; chestGroup.length > i; i++){
+    for(let i = 0; chestGroup.length > i; i++){
         if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), chestGroup[i].getBounds())){
             getChest(player, chestGroup[i]);
         }
@@ -277,7 +302,7 @@ function update ()
 
     //Weapon Interaction
     if(weaponGroup.length > 0){
-        for(var i = 0; weaponGroup.length > i; i++){
+        for(let i = 0; weaponGroup.length > i; i++){
             let weapon = weaponGroup[i];
             if(weapon.isEquiped == false){
                 if(Phaser.Geom.Intersects.RectangleToRectangle(player.getBounds(), weapon.getBounds())){
@@ -291,19 +316,32 @@ function update ()
             }
         }
     }
-
-    //MonsterInteraction
-    for(var i = 0; monsterGroup.length > i; i++){
+    //healing Interaction
+    if(healGroup.length > 0){
+        for(let i = 0; healGroup.length > i; i++){
+            heal = healGroup[i];
+            if(heal.isConsumed == false){
+                let playerCoord = player.getBounds();
+                let healCoord = heal.getBounds();
+                if(playerCoord.right - 90 > healCoord.left && playerCoord.left + 90 < healCoord.right && playerCoord.bottom >= healCoord.top){
+                    getHeal(heal, player);
+                }
+            }
+        }
+    }
+    
+    //Monster Interaction
+    for(let i = 0; monsterGroup.length > i; i++){
         let monster = monsterGroup[i];
         if(monster.isDead == false){
             let playerCoord = player.getBounds();
             let monsterCoord = monster.getBounds();
             if(playerCoord.right - 90 > monsterCoord.left && playerCoord.left + 90 <monsterCoord.right && playerCoord.bottom >= monsterCoord.top){
-                monster.anims.play('attack_m');
+                monster.anims.play('attack_m' + monster.imgSuffix);
                 lastI = i;
                 setTimeout(()=>{
                     if(monsterGroup[lastI].isDead == false){
-                        monsterGroup[lastI].anims.play('still_m');
+                        monsterGroup[lastI].anims.play('still_m' + monster.imgSuffix);
                     }
                 }, 40, lastI, monsterGroup);
                 if(player.invincibleFrame == false){
@@ -318,11 +356,12 @@ function update ()
             isPlayerRight = isPlayerOnRight(player, monster);
             if(player.x + 500 > monster.x || player.x - 500 > monster.x || monster.aggro == true){
                 monster.aggro = true;
+                let randomVelocity = getRandomInt(monster.moveSpeed/5);
                 if(monster.isKnocked == false){
                     if(isPlayerRight == true){
-                        monster.body.velocity.x = -200;
+                        monster.body.velocity.x = - monster.moveSpeed - randomVelocity;
                     }else{
-                        monster.body.velocity.x = + 200;
+                        monster.body.velocity.x = monster.moveSpeed + randomVelocity;
                     }
                 }
             }
@@ -351,6 +390,7 @@ function isPlayerOnRight(player, monster){
         return true;
     }else return false;
 }
+
 //Function create special sprites
 //monster are in monster.js
 function createChest(x, y, scale){
@@ -380,6 +420,13 @@ function initialisePlayer(){
     player.weaponState = "_0";
     player.knockBack = 30;
     player.setCollideWorldBounds(true);
+}
+function createHealing(x, y){
+    let heal = theGame.physics.add.sprite(x, y, "heart").setScale(0.2);
+    heal.isConsumed = false;
+    heal.id = healGroup.length;
+    theGame.physics.add.collider(platforms, heal);
+    healGroup.push(heal);
 }
 //Basic Function
 function getRandomInt(max) {
