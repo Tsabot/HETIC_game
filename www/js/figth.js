@@ -12,6 +12,8 @@ function hitMonster(player, monster){
     knockBackFoes(player, monster);
     createDamageText(monster, player)
     if(monster.health <= 0){
+        monsterGroup.splice(monster.id, 1);
+        resetGroupId(monsterGroup);
         monster.destroy();
         enemyDrop(monster);
         monster.isDead = true;
@@ -66,7 +68,7 @@ function getHeal(heal, player){
     if(player.health != player.maxHealth){
         heal.isConsumed = true;
         healGroup.splice(heal.id, 1);
-        resetHealId();
+        resetGroupId(healGroup);
         heal.destroy();
         player.health = player.health + 0.15 * player.maxHealth;
         if(player.health > player.maxHealth){
@@ -75,9 +77,9 @@ function getHeal(heal, player){
         animateHp(player.maxHealth, player.health);
     }
 }
-function resetHealId(){
-    for(let i = 0; healGroup.length > i; i++){
-        heal = healGroup[i];
-        heal.id = i;
+function resetGroupId(group){
+    for(let i = 0; group.length > i; i++){
+        let individual = group[i];
+        individual.id = i;
     }
 }

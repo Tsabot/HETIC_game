@@ -94,6 +94,26 @@ function createAnimation(theGame){
         frames: [ { key: 'monster_2', frame: 0 } ]
     });
     theGame.anims.create({
+        key: 'attack_m_3',
+        frames: [ { key: 'monster_3', frame: 2 } ]
+    });
+    theGame.anims.create({
+        key: 'still_m_3',
+        frames: [ { key: 'monster_3', frame: 0 } ]
+    });
+    theGame.anims.create({
+        key: 'move_m_3',
+        frames: [ { key: 'monster_3', frame: 1 } ]
+    });
+    theGame.anims.create({
+        key: 'attack_m_4',
+        frames: [ { key: 'monster_4', frame: 1 } ]
+    });
+    theGame.anims.create({
+        key: 'still_m_4',
+        frames: [ { key: 'monster_4', frame: 0 } ]
+    });
+    theGame.anims.create({
         key: 'w_sword_basic',
         frames: [ { key: 'w_sword', frame: 0 } ]
     });
@@ -132,6 +152,9 @@ function createDamageText(monster, player){
 function animateHp(maxHealth, newHealth){
     newProcent = newHealth/maxHealth;
     healthBar.width = 300 * newProcent;
+    if(healthBar.width < 0){
+        healthBar.width = 0;
+    }
     graphics.clear();
     graphics.fillRectShape(healthBar);
 }

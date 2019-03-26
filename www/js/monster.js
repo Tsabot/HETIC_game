@@ -30,6 +30,7 @@ function createMonster(x, y, type, scale, facingRight){
         dropRate = 10;
         moveSpeed = 150;
         imgSuffix = "_3";
+        scale = 0.7;
     }else if(type == 4){ //Range
         health = 20;
         damage = 8;
@@ -59,6 +60,7 @@ function createMonster(x, y, type, scale, facingRight){
     monster.aggro = false;
     monster.isKnocked = false;
     monster.isStun = false;
+    monster.hasSpecial = true;
     theGame.physics.add.collider(platforms, monster);
     monsterGroup.push(monster);
 }

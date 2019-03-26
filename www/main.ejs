@@ -22,8 +22,6 @@
 /*TO DO
 
 Mechanics / gameplay:
-Add random enemy drop healing -/
-Add enemies types -/
 Add enemies types mechanics
 Add boss mechanics
 Add new weapons (Rarity/Range)
@@ -90,7 +88,7 @@ function initiate(){
         physics: {
             default: 'arcade',
             arcade: {
-                gravity: { y: 500 },
+                gravity: { y: 600 },
                 debug: false
             }
         },
@@ -119,6 +117,8 @@ function preload ()
     this.load.spritesheet('w_spear', './assets/weapon_1.png', { frameWidth: 136.5, frameHeight: 169 });
     //spriteSheet of the different monsters
     this.load.spritesheet('monster_2', './assets/monster_2.png', { frameWidth: 128, frameHeight: 192 });
+    this.load.spritesheet('monster_3', './assets/monster_3.png', { frameWidth: 310, frameHeight: 310 });
+    this.load.spritesheet('monster_4', './assets/monster_4.png', { frameWidth: 128, frameHeight: 192 });
 }
 function create ()
 {
@@ -161,8 +161,8 @@ function create ()
 
     //Creation of monster
     createMonster(1600, curentHeight - 270, 2, 0.9);
-    createMonster(1900, curentHeight - 270, 2, 0.9);
-    createMonster(2100, curentHeight - 270, 2, 0.9);
+    createMonster(1900, curentHeight - 270, 3, 1.05);
+    createMonster(2100, curentHeight - 270, 4, 0.7);
 
     //  Input Events
     cursors = this.input.keyboard.createCursorKeys();
@@ -258,13 +258,13 @@ function update ()
         animateHp(player.maxHealth, player.health);
         updateCam(this);
         firstJump = true;
-        player.setVelocityY(-300);
+        player.setVelocityY(-400);
         secondJumpTimer = setTimeout(() => {
             secondJump = true;
         }, 200);
     }else if(cursors.up.isDown && firstJump == true){
         if(secondJump == true){
-            player.setVelocityY(-350);
+            player.setVelocityY(-450);
             secondJump = false;
         }
     }
@@ -353,15 +353,54 @@ function update ()
                 }
             }
             //monster movement
-            isPlayerRight = isPlayerOnRight(player, monster);
-            if(player.x + 500 > monster.x || player.x - 500 > monster.x || monster.aggro == true){
+            let isPlayerRight = isPlayerOnRight(player, monster);
+            if(player.x + 700 > monster.x || player.x - 700 > monster.x || monster.aggro == true){
                 monster.aggro = true;
-                let randomVelocity = getRandomInt(monster.moveSpeed/5);
-                if(monster.isKnocked == false){
-                    if(isPlayerRight == true){
-                        monster.body.velocity.x = - monster.moveSpeed - randomVelocity;
+                if(monster.type == 3 && monster.hasSpecial == true ){
+                    if( player.x + 400 > monster.x || player.x - 400 > monster.x){
+                        monster.hasSpecial = false;
+                        //playAnimCHarge
+                        monster.isKnocked = true;
+                        monster.body.velocity.x = 0;
+                        setTimeout(()=>{
+                            if(monster.isDead == false){
+                                if(isPlayerRight == true){
+                                monster.body.velocity.x = -1200;
+                                monster.body.velocity.y = -70;
+                                }else{
+                                    monster.body.velocity.x =  1200;
+                                    monster.body.velocity.y = -70;
+                                }
+                                setTimeout(()=>{
+                                    monster.isKnocked = false;
+                                },200);
+                                
+                            }
+                        }, 1100, isPlayerRight);
+                        setTimeout(()=>{
+                            if(monster.isDead == false){
+                                monster.hasSpecial = true;
+                            }
+                        }, 3000)
+                    }
+                }else if(monster.type == 4){
+                    if(player.x + 800 > monster.x || player.x - 700 < monster.x){
+                        monster.body.velocity.x == 0;
                     }else{
-                        monster.body.velocity.x = monster.moveSpeed + randomVelocity;
+                        if(isPlayerRight == true){
+                            monster.body.velocity.x = - monster.moveSpeed;
+                        }else{
+                            monster.body.velocity.x = monster.moveSpeed;
+                        }
+                    }
+                }else{
+                    if(monster.isKnocked == false){
+                        let randomVelocity = getRandomInt(monster.moveSpeed/5);
+                        if(isPlayerRight == true){
+                            monster.body.velocity.x = - monster.moveSpeed - randomVelocity;
+                        }else{
+                            monster.body.velocity.x = monster.moveSpeed + randomVelocity;
+                        }
                     }
                 }
             }
